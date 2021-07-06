@@ -79,4 +79,9 @@ class DVDImporterTests: XCTestCase {
 		subscription.cancel()
 		connection.invalidate()
 	}
+
+	func testMinimalDVD() {
+		let iso = testBundle.url(forResource: "MinimalDVD", withExtension: "iso")!
+		XCTAssertNoThrow(try DVDImporter(fromSource: iso))
+	}
 }
