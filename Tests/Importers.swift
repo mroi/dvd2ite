@@ -4,4 +4,8 @@ import XCTest
 
 
 class DVDImporterTests: XCTestCase {
+
+	override func setUp() {
+		ConverterClient.injectedProxy = nil
+	}
 }

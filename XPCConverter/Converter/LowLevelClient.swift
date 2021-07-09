@@ -34,6 +34,16 @@ public class ConverterClient<ProxyInterface> {
 
 	/// Sets up a client instance managing one XPC connection.
 	init() {
+#if DEBUG
+		if let proxy = ConverterClient<Any>.injectedProxy {
+			remote = proxy as! ProxyInterface
+			publisher = ConverterClient<Any>.injectedPublisher
+			connection = NSXPCConnection()
+			subscription = nil
+			return
+		}
+#endif
+
 		let returnChannel = ReturnImplementation()
 		connection = ConverterClient<ProxyInterface>.connection()
 		connection.remoteObjectInterface = NSXPCInterface(with: ConverterInterface.self)
@@ -71,3 +81,15 @@ public class ConverterClient<ProxyInterface> {
 		return NSXPCConnection(serviceName: "de.reactorcontrol.movie-archive.converter")
 	}
 }
+
+#if DEBUG
+extension ConverterClient where ProxyInterface == Any {
+
+	/// Injects a mock implementation for testing.
+	static var injectedProxy: ProxyInterface?
+
+	/// Injects a mock implementation for testing.
+	static var injectedPublisher =
+		Empty<ConverterOutput, ConverterError>(completeImmediately: false).eraseToAnyPublisher()
+}
+#endif
