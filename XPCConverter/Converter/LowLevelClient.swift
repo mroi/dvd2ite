@@ -22,7 +22,7 @@ public class ConverterClient<ProxyInterface> {
 
 	/// Sets up a client instance managing one XPC connection.
 	init() {
-		connection = NSXPCConnection(serviceName: "de.reactorcontrol.movie-archive.converter")
+		connection = ConverterClient<ProxyInterface>.connection()
 		connection.remoteObjectInterface = NSXPCInterface(with: ConverterInterface.self)
 		connection.resume()
 
@@ -31,5 +31,22 @@ public class ConverterClient<ProxyInterface> {
 
 	deinit {
 		connection.invalidate()
+	}
+
+	/// Creates a connection to the XPC service.
+	private static func connection() -> NSXPCConnection {
+#if DEBUG
+		if Bundle.main.bundleIdentifier == "com.apple.dt.Xcode.PlaygroundStub-macosx" {
+			// Playground execution: XPC service needs to be manually registered
+			let connection = NSXPCConnection(machServiceName: "de.reactorcontrol.movie-archive.converter")
+			connection.invalidationHandler = {
+				print("To use the Converter XPC service from a Playground, " +
+					  "it needs to be manually registered with launchd:")
+				print("launchctl bootstrap gui/\(getuid()) <path to Converter.xpc>")
+			}
+			return connection
+		}
+#endif
+		return NSXPCConnection(serviceName: "de.reactorcontrol.movie-archive.converter")
 	}
 }
