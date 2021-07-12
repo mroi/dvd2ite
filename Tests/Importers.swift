@@ -44,4 +44,36 @@ class DVDImporterTests: XCTestCase {
 			XCTAssertEqual($0 as! Importer.Error, Importer.Error.sourceNotSupported)
 		}
 	}
+
+	func testXPCErrorPropagation() {
+		// set up an invalid XPC connection
+		let returnChannel = ReturnImplementation()
+		let connection = NSXPCConnection(serviceName: "invalid")
+		connection.remoteObjectInterface = NSXPCInterface(with: ConverterInterface.self)
+		connection.invalidationHandler = { returnChannel.connectionInvalid() }
+		connection.interruptionHandler = { returnChannel.connectionInterrupted() }
+		connection.resume()
+
+		// expect publisher to report the error
+		let publisherFailure = expectation(description: "publisher should fail")
+		let subscription = returnChannel.publisher.sink {
+			XCTAssertEqual($0, .failure(.connectionInvalid))
+			publisherFailure.fulfill()
+		} receiveValue: { _ in }
+
+		// inject this invalid connection
+		ConverterClient.injectedProxy = (connection.remoteObjectProxy as! ConverterDVDReader)
+		ConverterClient.injectedPublisher = returnChannel.publisher
+
+		// exercise the connection
+		let source = URL(fileURLWithPath: "/var/empty")
+		XCTAssertThrowsError(try DVDImporter(fromSource: source)) {
+			XCTAssertEqual($0 as! Importer.Error, Importer.Error.connectionInvalid)
+		}
+		waitForExpectations(timeout: .infinity)
+
+		// cleanup
+		subscription.cancel()
+		connection.invalidate()
+	}
 }
